@@ -19,6 +19,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
           fetch-depth: 0  # a full history is required for pull request analysis
+
+      - name: Bootstrap
+        run: |
+          mvn clean install -DskipTests
+          mkdir -p .qodana/code-coverage
+          cp target/site/jacoco/jacoco.xml .qodana/code-coverage
+      
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@v2026.1
         with:
