@@ -1,9 +1,9 @@
 package com.qodana.bank.model;
 
 public class Message {
-    private String sender;
-    private String receiver;
-    private String content;
+    private final String sender;
+    private final String receiver;
+    private final String content;
 
     public Message(String sender, String receiver, String content) {
         this.sender = sender;

@@ -7,7 +7,6 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import java.util.*;
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
 @Service
 public class RiskEngine {
