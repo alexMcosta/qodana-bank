@@ -42,171 +42,306 @@ import java.util.Map;
 <span class="fc" id="L42">        return ResponseEntity.ok(bankService.getUserByUsername(username));</span>
     }
 
+    @GetMapping(&quot;/accounts&quot;)
+    public ResponseEntity&lt;?&gt; getAccounts(HttpSession session) {
+<span class="nc" id="L47">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+        
+<span class="nc" id="L50">        User user = bankService.getUserByUsername(username);</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
+        
+<span class="nc" id="L53">        return ResponseEntity.ok(((Customer) user).getAccounts());</span>
+    }
+
+    @PostMapping(&quot;/accounts&quot;)
+    public ResponseEntity&lt;?&gt; createAccount(@RequestBody Map&lt;String, String&gt; request, HttpSession session) {
+<span class="nc" id="L58">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+        
+<span class="nc" id="L61">        User user = bankService.getUserByUsername(username);</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
+        
+<span class="nc" id="L64">        String type = request.getOrDefault(&quot;type&quot;, &quot;CHECKING&quot;);</span>
+<span class="nc" id="L65">        String nickname = request.getOrDefault(&quot;nickname&quot;, type);</span>
+        
+<span class="nc" id="L67">        Account newAcc = new Account(type, nickname, 0.0);</span>
+<span class="nc" id="L68">        ((Customer) user).addAccount(newAcc);</span>
+        
+<span class="nc" id="L70">        return ResponseEntity.ok(newAcc);</span>
+    }
+
     @PostMapping(&quot;/transfer&quot;)
     public ResponseEntity&lt;?&gt; transfer(@RequestBody Map&lt;String, Object&gt; request, HttpSession session) {
-<span class="fc" id="L47">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L48" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L75">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L50">        User user = bankService.getUserByUsername(username);</span>
-<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
+<span class="fc" id="L78">        User user = bankService.getUserByUsername(username);</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
         
-<span class="fc" id="L53">        Customer customer = (Customer) user;</span>
-<span class="fc" id="L54">        String direction = (String) request.get(&quot;direction&quot;);</span>
-<span class="fc" id="L55">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
-        
-        boolean success;
-        String accountFrom, accountTo;
-<span class="pc bpc" id="L59" title="1 of 2 branches missed.">        if (&quot;toSavings&quot;.equals(direction)) {</span>
-<span class="fc" id="L60">            success = customer.transferToSavings(amount);</span>
-<span class="fc" id="L61">            accountFrom = &quot;CHECKING&quot;;</span>
-<span class="fc" id="L62">            accountTo = &quot;SAVINGS&quot;;</span>
-        } else {
-<span class="nc" id="L64">            success = customer.transferToChecking(amount);</span>
-<span class="nc" id="L65">            accountFrom = &quot;SAVINGS&quot;;</span>
-<span class="nc" id="L66">            accountTo = &quot;CHECKING&quot;;</span>
+<span class="fc" id="L81">        Customer customer = (Customer) user;</span>
+<span class="fc" id="L82">        String fromAccNum = (String) request.get(&quot;fromAccount&quot;);</span>
+<span class="fc" id="L83">        String toAccNum = (String) request.get(&quot;toAccount&quot;);</span>
+<span class="fc" id="L84">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
+
+<span class="fc" id="L86">        Account fromAcc = customer.getAccountByNumber(fromAccNum);</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if (fromAcc == null) return ResponseEntity.badRequest().body(&quot;Source account not found&quot;);</span>
+
+        // Risk Check
+<span class="fc" id="L90">        RiskEvaluation eval = bankService.getRiskEngine().evaluate(customer, &quot;TRANSFER&quot;, fromAcc, amount, toAccNum, bankService.getTransactionsForUser(username));</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        if (eval.getLevel() == RiskLevel.BLOCK) {</span>
+<span class="nc" id="L92">            bankService.addTransaction(new Transaction(username, &quot;TRANSFER_OUT&quot;, fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.BLOCKED));</span>
+<span class="nc" id="L93">            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(&quot;Transaction blocked: &quot; + eval.getReason());</span>
         }
         
-<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (success) {</span>
-<span class="fc" id="L70">            bankService.addTransaction(new Transaction(username, &quot;TRANSFER_OUT&quot;, accountFrom, amount, </span>
-<span class="pc bpc" id="L71" title="1 of 2 branches missed.">                &quot;CHECKING&quot;.equals(accountFrom) ? customer.getCheckingBalance() : customer.getSavingsBalance(), </span>
-                TransactionStatus.COMPLETED));
-<span class="fc" id="L73">            bankService.addTransaction(new Transaction(username, &quot;TRANSFER_IN&quot;, accountTo, amount, </span>
-<span class="pc bpc" id="L74" title="1 of 2 branches missed.">                &quot;SAVINGS&quot;.equals(accountTo) ? customer.getSavingsBalance() : customer.getCheckingBalance(), </span>
-                TransactionStatus.COMPLETED));
-<span class="fc" id="L76">            return ResponseEntity.ok().build();</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if (eval.getLevel() == RiskLevel.REVIEW) {</span>
+<span class="fc" id="L97">            bankService.addTransaction(new Transaction(username, &quot;TRANSFER_OUT&quot;, fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.UNDER_REVIEW));</span>
+<span class="fc" id="L98">            return ResponseEntity.status(HttpStatus.ACCEPTED).body(&quot;Transaction under review: &quot; + eval.getReason());</span>
+        }
+
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">        if (eval.getLevel() == RiskLevel.REQUIRE_2FA) {</span>
+<span class="nc" id="L102">            return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED).body(&quot;2FA required: &quot; + eval.getReason());</span>
         }
         
-<span class="pc bpc" id="L79" title="1 of 2 branches missed.">        bankService.addTransaction(new Transaction(username, &quot;TRANSFER_FAILED&quot;, direction.contains(&quot;Savings&quot;) ? &quot;CHECKING&quot; : &quot;SAVINGS&quot;, amount, </span>
-<span class="pc bpc" id="L80" title="1 of 2 branches missed.">            direction.contains(&quot;Savings&quot;) ? customer.getCheckingBalance() : customer.getSavingsBalance(), </span>
-            TransactionStatus.FAILED));
-<span class="fc" id="L82">        return ResponseEntity.badRequest().body(&quot;Insufficient funds or invalid amount&quot;);</span>
+<span class="fc" id="L105">        boolean success = customer.transfer(fromAccNum, toAccNum, amount);</span>
+        
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        if (success) {</span>
+<span class="fc" id="L108">            Account from = customer.getAccountByNumber(fromAccNum);</span>
+<span class="fc" id="L109">            Account to = customer.getAccountByNumber(toAccNum);</span>
+<span class="fc" id="L110">            bankService.addTransaction(new Transaction(username, &quot;TRANSFER_OUT&quot;, from.getNickname(), amount, </span>
+<span class="fc" id="L111">                from.getBalance(), TransactionStatus.COMPLETED));</span>
+<span class="fc" id="L112">            bankService.addTransaction(new Transaction(username, &quot;TRANSFER_IN&quot;, to.getNickname(), amount, </span>
+<span class="fc" id="L113">                to.getBalance(), TransactionStatus.COMPLETED));</span>
+<span class="fc" id="L114">            return ResponseEntity.ok().build();</span>
+        }
+        
+<span class="nc" id="L117">        bankService.addTransaction(new Transaction(username, &quot;TRANSFER_FAILED&quot;, fromAccNum, amount, </span>
+            0, TransactionStatus.FAILED));
+<span class="nc" id="L119">        return ResponseEntity.badRequest().body(&quot;Insufficient funds or invalid accounts&quot;);</span>
     }
 
     @PostMapping(&quot;/deposit&quot;)
     public ResponseEntity&lt;?&gt; deposit(@RequestBody Map&lt;String, Object&gt; request, HttpSession session) {
-<span class="fc" id="L87">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L124">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L90">        User user = bankService.getUserByUsername(username);</span>
-<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
+<span class="fc" id="L127">        User user = bankService.getUserByUsername(username);</span>
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
         
-<span class="fc" id="L93">        Customer customer = (Customer) user;</span>
-<span class="fc" id="L94">        String account = (String) request.getOrDefault(&quot;account&quot;, &quot;CHECKING&quot;);</span>
-<span class="fc" id="L95">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
+<span class="fc" id="L130">        Customer customer = (Customer) user;</span>
+<span class="fc" id="L131">        String accountNumber = (String) request.get(&quot;accountNumber&quot;);</span>
+<span class="fc" id="L132">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
         
-<span class="fc" id="L97">        customer.deposit(account, amount);</span>
-<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        double balanceAfter = account.equalsIgnoreCase(&quot;SAVINGS&quot;) ? customer.getSavingsBalance() : customer.getCheckingBalance();</span>
-<span class="fc" id="L99">        bankService.addTransaction(new Transaction(username, &quot;DEPOSIT&quot;, account, amount, balanceAfter, TransactionStatus.COMPLETED));</span>
-        
-<span class="fc" id="L101">        return ResponseEntity.ok().build();</span>
+<span class="fc" id="L134">        boolean success = customer.deposit(accountNumber, amount);</span>
+<span class="pc bpc" id="L135" title="1 of 2 branches missed.">        if (success) {</span>
+<span class="fc" id="L136">            Account acc = customer.getAccountByNumber(accountNumber);</span>
+<span class="fc" id="L137">            bankService.addTransaction(new Transaction(username, &quot;DEPOSIT&quot;, acc.getNickname(), amount, acc.getBalance(), TransactionStatus.COMPLETED));</span>
+<span class="fc" id="L138">            return ResponseEntity.ok().build();</span>
+        }
+<span class="nc" id="L140">        return ResponseEntity.badRequest().body(&quot;Deposit failed&quot;);</span>
     }
 
     @PostMapping(&quot;/withdraw&quot;)
     public ResponseEntity&lt;?&gt; withdraw(@RequestBody Map&lt;String, Object&gt; request, HttpSession session) {
-<span class="fc" id="L106">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L145">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L109">        User user = bankService.getUserByUsername(username);</span>
-<span class="pc bpc" id="L110" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
+<span class="fc" id="L148">        User user = bankService.getUserByUsername(username);</span>
+<span class="pc bpc" id="L149" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Not a customer&quot;);</span>
         
-<span class="fc" id="L112">        Customer customer = (Customer) user;</span>
-<span class="fc" id="L113">        String account = (String) request.getOrDefault(&quot;account&quot;, &quot;CHECKING&quot;);</span>
-<span class="fc" id="L114">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
+<span class="fc" id="L151">        Customer customer = (Customer) user;</span>
+<span class="fc" id="L152">        String accountNumber = (String) request.get(&quot;accountNumber&quot;);</span>
+<span class="fc" id="L153">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
         
-<span class="fc" id="L116">        boolean success = customer.withdraw(account, amount);</span>
-<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        double balanceAfter = account.equalsIgnoreCase(&quot;SAVINGS&quot;) ? customer.getSavingsBalance() : customer.getCheckingBalance();</span>
+<span class="fc" id="L155">        boolean success = customer.withdraw(accountNumber, amount);</span>
         
-<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if (success) {</span>
-<span class="fc" id="L120">            bankService.addTransaction(new Transaction(username, &quot;WITHDRAWAL&quot;, account, amount, balanceAfter, TransactionStatus.COMPLETED));</span>
-<span class="fc" id="L121">            return ResponseEntity.ok().build();</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">        if (success) {</span>
+<span class="fc" id="L158">            Account acc = customer.getAccountByNumber(accountNumber);</span>
+<span class="fc" id="L159">            bankService.addTransaction(new Transaction(username, &quot;WITHDRAWAL&quot;, acc.getNickname(), amount, acc.getBalance(), TransactionStatus.COMPLETED));</span>
+<span class="fc" id="L160">            return ResponseEntity.ok().build();</span>
         } else {
-<span class="nc" id="L123">            bankService.addTransaction(new Transaction(username, &quot;WITHDRAWAL_FAILED&quot;, account, amount, balanceAfter, TransactionStatus.FAILED));</span>
-<span class="nc" id="L124">            return ResponseEntity.badRequest().body(&quot;Insufficient funds&quot;);</span>
+<span class="nc" id="L162">            bankService.addTransaction(new Transaction(username, &quot;WITHDRAWAL_FAILED&quot;, accountNumber, amount, 0, TransactionStatus.FAILED));</span>
+<span class="nc" id="L163">            return ResponseEntity.badRequest().body(&quot;Insufficient funds&quot;);</span>
         }
     }
 
     @PostMapping(&quot;/admin/adjust&quot;)
     public ResponseEntity&lt;?&gt; adjustBalance(@RequestBody Map&lt;String, Object&gt; request, HttpSession session) {
-<span class="fc" id="L130">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L169">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L133">        User admin = bankService.getUserByUsername(adminUsername);</span>
-<span class="pc bpc" id="L134" title="2 of 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
+<span class="fc" id="L172">        User admin = bankService.getUserByUsername(adminUsername);</span>
+<span class="pc bpc" id="L173" title="2 of 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
         
-<span class="fc" id="L136">        String targetUser = (String) request.get(&quot;username&quot;);</span>
-<span class="fc" id="L137">        String account = (String) request.getOrDefault(&quot;account&quot;, &quot;CHECKING&quot;);</span>
-<span class="fc" id="L138">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
+<span class="fc" id="L175">        String targetUser = (String) request.get(&quot;username&quot;);</span>
+<span class="fc" id="L176">        String accountNumber = (String) request.get(&quot;accountNumber&quot;);</span>
+<span class="fc" id="L177">        double amount = Double.parseDouble(request.get(&quot;amount&quot;).toString());</span>
         
-<span class="fc" id="L140">        User user = bankService.getUserByUsername(targetUser);</span>
-<span class="pc bpc" id="L141" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Target not a customer&quot;);</span>
+<span class="fc" id="L179">        User user = bankService.getUserByUsername(targetUser);</span>
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body(&quot;Target not a customer&quot;);</span>
         
-<span class="fc" id="L143">        Customer customer = (Customer) user;</span>
-<span class="fc" id="L144">        customer.setBalance(account, amount);</span>
+<span class="fc" id="L182">        Customer customer = (Customer) user;</span>
+<span class="fc" id="L183">        Account acc = customer.getAccountByNumber(accountNumber);</span>
+<span class="pc bpc" id="L184" title="1 of 2 branches missed.">        if (acc == null) return ResponseEntity.badRequest().body(&quot;Account not found&quot;);</span>
         
-<span class="fc" id="L146">        bankService.addTransaction(new Transaction(targetUser, &quot;ADMIN_ADJUSTMENT&quot;, account, amount, amount, TransactionStatus.COMPLETED));</span>
+<span class="fc" id="L186">        acc.setBalance(amount);</span>
         
-<span class="fc" id="L148">        return ResponseEntity.ok().build();</span>
+<span class="fc" id="L188">        bankService.addTransaction(new Transaction(targetUser, &quot;ADMIN_ADJUSTMENT&quot;, acc.getNickname(), amount, amount, TransactionStatus.COMPLETED));</span>
+        
+<span class="fc" id="L190">        return ResponseEntity.ok().build();</span>
     }
 
     @GetMapping(&quot;/transactions&quot;)
     public ResponseEntity&lt;?&gt; getTransactions(@RequestParam(required = false) String type, 
                                             @RequestParam(required = false) String account,
+                                            @RequestParam(required = false) String targetUser,
                                             HttpSession session) {
-<span class="fc" id="L155">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L198">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L158">        List&lt;Transaction&gt; txs = bankService.getTransactionsForUser(username);</span>
+<span class="fc" id="L201">        User user = bankService.getUserByUsername(username);</span>
+        List&lt;Transaction&gt; txs;
+        
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        if (user.isAdmin()) {</span>
+<span class="nc bnc" id="L205" title="All 4 branches missed.">            if (targetUser != null &amp;&amp; !targetUser.isEmpty()) {</span>
+<span class="nc" id="L206">                txs = bankService.getTransactionsForUser(targetUser);</span>
+            } else {
+<span class="nc" id="L208">                txs = new java.util.ArrayList&lt;&gt;(bankService.getAllTransactions());</span>
+            }
+        } else {
+<span class="fc" id="L211">            txs = bankService.getTransactionsForUser(username);</span>
+        }
+        
         // Basic filtering
-<span class="pc bpc" id="L160" title="1 of 2 branches missed.">        if (type != null) {</span>
-<span class="nc bnc" id="L161" title="All 2 branches missed.">            txs.removeIf(t -&gt; !t.getType().equalsIgnoreCase(type));</span>
+<span class="pc bpc" id="L215" title="3 of 4 branches missed.">        if (type != null &amp;&amp; !type.isEmpty()) {</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">            txs.removeIf(t -&gt; !t.getType().equalsIgnoreCase(type));</span>
         }
-<span class="pc bpc" id="L163" title="1 of 2 branches missed.">        if (account != null) {</span>
-<span class="nc bnc" id="L164" title="All 2 branches missed.">            txs.removeIf(t -&gt; !t.getAccount().equalsIgnoreCase(account));</span>
+<span class="pc bpc" id="L218" title="3 of 4 branches missed.">        if (account != null &amp;&amp; !account.isEmpty()) {</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">            txs.removeIf(t -&gt; !t.getAccount().equalsIgnoreCase(account));</span>
         }
         
-<span class="fc" id="L167">        return ResponseEntity.ok(txs);</span>
+<span class="fc" id="L222">        return ResponseEntity.ok(txs);</span>
     }
 
     @GetMapping(&quot;/transactions/export&quot;)
-    public ResponseEntity&lt;String&gt; exportTransactions(HttpSession session) {
-<span class="nc" id="L172">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+    public ResponseEntity&lt;String&gt; exportTransactions(@RequestParam(required = false) String targetUser,
+                                                     HttpSession session) {
+<span class="nc" id="L228">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="nc" id="L175">        List&lt;Transaction&gt; txs = bankService.getTransactionsForUser(username);</span>
-<span class="nc" id="L176">        StringBuilder csv = new StringBuilder(&quot;Timestamp,Type,Account,Amount,BalanceAfter,Status\n&quot;);</span>
-<span class="nc bnc" id="L177" title="All 2 branches missed.">        for (Transaction t : txs) {</span>
-<span class="nc" id="L178">            csv.append(t.toString()).append(&quot;\n&quot;);</span>
-<span class="nc" id="L179">        }</span>
+<span class="nc" id="L231">        User user = bankService.getUserByUsername(username);</span>
+        List&lt;Transaction&gt; txs;
         
-<span class="nc" id="L181">        return ResponseEntity.ok()</span>
-<span class="nc" id="L182">                .header(&quot;Content-Disposition&quot;, &quot;attachment; filename=transactions.csv&quot;)</span>
-<span class="nc" id="L183">                .header(&quot;Content-Type&quot;, &quot;text/csv&quot;)</span>
-<span class="nc" id="L184">                .body(csv.toString());</span>
+<span class="nc bnc" id="L234" title="All 6 branches missed.">        if (user.isAdmin() &amp;&amp; targetUser != null &amp;&amp; !targetUser.isEmpty()) {</span>
+<span class="nc" id="L235">            txs = bankService.getTransactionsForUser(targetUser);</span>
+        } else {
+<span class="nc" id="L237">            txs = bankService.getTransactionsForUser(username);</span>
+        }
+        
+<span class="nc" id="L240">        StringBuilder csv = new StringBuilder(&quot;Timestamp,Type,Account,Amount,BalanceAfter,Status\n&quot;);</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">        for (Transaction t : txs) {</span>
+<span class="nc" id="L242">            csv.append(t.toString()).append(&quot;\n&quot;);</span>
+<span class="nc" id="L243">        }</span>
+        
+<span class="nc" id="L245">        return ResponseEntity.ok()</span>
+<span class="nc" id="L246">                .header(&quot;Content-Disposition&quot;, &quot;attachment; filename=transactions.csv&quot;)</span>
+<span class="nc" id="L247">                .header(&quot;Content-Type&quot;, &quot;text/csv&quot;)</span>
+<span class="nc" id="L248">                .body(csv.toString());</span>
     }
 
     @GetMapping(&quot;/messages&quot;)
     public ResponseEntity&lt;List&lt;Message&gt;&gt; getMessages(HttpSession session) {
-<span class="fc" id="L189">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L190" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L253">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L254" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L192">        User user = bankService.getUserByUsername(username);</span>
-<span class="fc bfc" id="L193" title="All 2 branches covered.">        if (user.isAdmin()) {</span>
-<span class="fc" id="L194">            return ResponseEntity.ok(bankService.getAllMessages());</span>
+<span class="fc" id="L256">        User user = bankService.getUserByUsername(username);</span>
+<span class="fc bfc" id="L257" title="All 2 branches covered.">        if (user.isAdmin()) {</span>
+<span class="fc" id="L258">            return ResponseEntity.ok(bankService.getAllMessages());</span>
         } else {
-<span class="fc" id="L196">            return ResponseEntity.ok(bankService.getMessagesForUser(username));</span>
+<span class="fc" id="L260">            return ResponseEntity.ok(bankService.getMessagesForUser(username));</span>
         }
     }
 
     @PostMapping(&quot;/messages&quot;)
     public ResponseEntity&lt;?&gt; sendMessage(@RequestBody Map&lt;String, String&gt; request, HttpSession session) {
-<span class="fc" id="L202">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
-<span class="pc bpc" id="L203" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L266">        String username = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L267" title="1 of 2 branches missed.">        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
         
-<span class="fc" id="L205">        String receiver = request.get(&quot;receiver&quot;);</span>
-<span class="fc" id="L206">        String content = request.get(&quot;content&quot;);</span>
+<span class="fc" id="L269">        String receiver = request.get(&quot;receiver&quot;);</span>
+<span class="fc" id="L270">        String content = request.get(&quot;content&quot;);</span>
         
-<span class="fc" id="L208">        bankService.addMessage(new Message(username, receiver, content));</span>
-<span class="fc" id="L209">        return ResponseEntity.ok().build();</span>
+<span class="fc" id="L272">        bankService.addMessage(new Message(username, receiver, content));</span>
+<span class="fc" id="L273">        return ResponseEntity.ok().build();</span>
+    }
+
+    // Risk Management Endpoints
+    @PostMapping(&quot;/admin/risk/block&quot;)
+    public ResponseEntity&lt;?&gt; blockRecipient(@RequestBody Map&lt;String, String&gt; request, HttpSession session) {
+<span class="fc" id="L279">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L280" title="1 of 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L281">        User admin = bankService.getUserByUsername(adminUsername);</span>
+<span class="pc bpc" id="L282" title="2 of 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
+
+<span class="fc" id="L284">        String accountNumber = request.get(&quot;accountNumber&quot;);</span>
+<span class="fc" id="L285">        bankService.getRiskEngine().blockRecipient(accountNumber);</span>
+<span class="fc" id="L286">        return ResponseEntity.ok().build();</span>
+    }
+
+    @PostMapping(&quot;/admin/risk/unblock&quot;)
+    public ResponseEntity&lt;?&gt; unblockRecipient(@RequestBody Map&lt;String, String&gt; request, HttpSession session) {
+<span class="fc" id="L291">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L293">        User admin = bankService.getUserByUsername(adminUsername);</span>
+<span class="pc bpc" id="L294" title="2 of 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
+
+<span class="fc" id="L296">        String accountNumber = request.get(&quot;accountNumber&quot;);</span>
+<span class="fc" id="L297">        bankService.getRiskEngine().unblockRecipient(accountNumber);</span>
+<span class="fc" id="L298">        return ResponseEntity.ok().build();</span>
+    }
+
+    @GetMapping(&quot;/admin/risk/blocked&quot;)
+    public ResponseEntity&lt;?&gt; getBlockedRecipients(HttpSession session) {
+<span class="nc" id="L303">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="nc" id="L305">        User admin = bankService.getUserByUsername(adminUsername);</span>
+<span class="nc bnc" id="L306" title="All 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
+
+<span class="nc" id="L308">        return ResponseEntity.ok(bankService.getRiskEngine().getBlockedRecipients());</span>
+    }
+
+    @PostMapping(&quot;/admin/risk/review&quot;)
+    public ResponseEntity&lt;?&gt; reviewTransaction(@RequestBody Map&lt;String, String&gt; request, HttpSession session) {
+<span class="nc" id="L313">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="nc" id="L315">        User admin = bankService.getUserByUsername(adminUsername);</span>
+<span class="nc bnc" id="L316" title="All 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
+
+<span class="nc" id="L318">        String transactionId = request.get(&quot;transactionId&quot;);</span>
+<span class="nc" id="L319">        String action = request.get(&quot;action&quot;); // APPROVE, REJECT</span>
+
+<span class="nc" id="L321">        List&lt;Transaction&gt; transactions = bankService.getAllTransactions();</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">        for (Transaction t : transactions) {</span>
+<span class="nc bnc" id="L323" title="All 4 branches missed.">            if (t.getId().equals(transactionId) &amp;&amp; t.getStatus() == TransactionStatus.UNDER_REVIEW) {</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">                if (&quot;APPROVE&quot;.equals(action)) {</span>
+                    try {
+<span class="nc" id="L326">                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField(&quot;status&quot;);</span>
+<span class="nc" id="L327">                        statusField.setAccessible(true);</span>
+<span class="nc" id="L328">                        statusField.set(t, TransactionStatus.COMPLETED);</span>
+<span class="nc" id="L329">                    } catch (Exception e) {</span>
+<span class="nc" id="L330">                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();</span>
+<span class="nc" id="L331">                    }</span>
+                } else {
+                    try {
+<span class="nc" id="L334">                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField(&quot;status&quot;);</span>
+<span class="nc" id="L335">                        statusField.setAccessible(true);</span>
+<span class="nc" id="L336">                        statusField.set(t, TransactionStatus.REVERSED);</span>
+<span class="nc" id="L337">                    } catch (Exception e) {</span>
+<span class="nc" id="L338">                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();</span>
+<span class="nc" id="L339">                    }</span>
+                }
+<span class="nc" id="L341">                return ResponseEntity.ok().build();</span>
+            }
+<span class="nc" id="L343">        }</span>
+<span class="nc" id="L344">        return ResponseEntity.notFound().build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

@@ -152,7 +152,7 @@ class BankApplicationTests {
         mockMvc.perform(post("/api/transfer").session(session)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isAccepted()); // Under review due to high amount
     }
 
     @Test
@@ -197,7 +197,7 @@ class BankApplicationTests {
 
         // 1. Deposit
         Map<String, Object> depositReq = new HashMap<>();
-        depositReq.put("account", "CHECKING");
+        depositReq.put("accountNumber", "ACC-ALICE-CH");
         depositReq.put("amount", 200.0);
         mockMvc.perform(post("/api/deposit").session(session)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -206,7 +206,7 @@ class BankApplicationTests {
 
         // 2. Withdraw
         Map<String, Object> withdrawReq = new HashMap<>();
-        withdrawReq.put("account", "CHECKING");
+        withdrawReq.put("accountNumber", "ACC-ALICE-CH");
         withdrawReq.put("amount", 50.0);
         mockMvc.perform(post("/api/withdraw").session(session)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -215,7 +215,8 @@ class BankApplicationTests {
 
         // 3. Transfer
         Map<String, Object> transferReq = new HashMap<>();
-        transferReq.put("direction", "toSavings");
+        transferReq.put("fromAccount", "ACC-ALICE-CH");
+        transferReq.put("toAccount", "ACC-ALICE-SA");
         transferReq.put("amount", 100.0);
         mockMvc.perform(post("/api/transfer").session(session)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -235,7 +236,7 @@ class BankApplicationTests {
         adminSession.setAttribute("user", "admin");
         Map<String, Object> adjustReq = new HashMap<>();
         adjustReq.put("username", "alice");
-        adjustReq.put("account", "SAVINGS");
+        adjustReq.put("accountNumber", "ACC-ALICE-SA");
         adjustReq.put("amount", 9999.0);
         mockMvc.perform(post("/api/admin/adjust").session(adminSession)
                 .contentType(MediaType.APPLICATION_JSON)
