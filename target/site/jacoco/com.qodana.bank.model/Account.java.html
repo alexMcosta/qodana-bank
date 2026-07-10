@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Account.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Qodana Bank</a> &gt; <a href="index.source.html" class="el_package">com.qodana.bank.model</a> &gt; <span class="el_source">Account.java</span></div><h1>Account.java</h1><pre class="source lang-java linenums">package com.qodana.bank.model;
+
+import java.util.UUID;
+
+public class Account {
+    private String accountNumber;
+    private String type; // CHECKING, SAVINGS, BUSINESS, etc.
+    private String nickname;
+    private double balance;
+    private double balanceLimit;
+    private String status; // ACTIVE, ARCHIVED, CLOSED
+
+<span class="fc" id="L13">    public Account(String type, String nickname, double initialBalance) {</span>
+<span class="fc" id="L14">        this.accountNumber = UUID.randomUUID().toString().substring(0, 8).toUpperCase();</span>
+<span class="fc" id="L15">        this.type = type;</span>
+<span class="fc" id="L16">        this.nickname = nickname;</span>
+<span class="fc" id="L17">        this.balance = initialBalance;</span>
+<span class="fc" id="L18">        this.balanceLimit = Double.MAX_VALUE;</span>
+<span class="fc" id="L19">        this.status = &quot;ACTIVE&quot;;</span>
+<span class="fc" id="L20">    }</span>
+
+<span class="fc" id="L22">    public Account(String accountNumber, String type, String nickname, double initialBalance) {</span>
+<span class="fc" id="L23">        this.accountNumber = accountNumber;</span>
+<span class="fc" id="L24">        this.type = type;</span>
+<span class="fc" id="L25">        this.nickname = nickname;</span>
+<span class="fc" id="L26">        this.balance = initialBalance;</span>
+<span class="fc" id="L27">        this.balanceLimit = Double.MAX_VALUE;</span>
+<span class="fc" id="L28">        this.status = &quot;ACTIVE&quot;;</span>
+<span class="fc" id="L29">    }</span>
+
+<span class="fc" id="L31">    public String getAccountNumber() { return accountNumber; }</span>
+<span class="fc" id="L32">    public String getType() { return type; }</span>
+<span class="fc" id="L33">    public String getNickname() { return nickname; }</span>
+<span class="fc" id="L34">    public double getBalance() { return balance; }</span>
+<span class="fc" id="L35">    public double getBalanceLimit() { return balanceLimit; }</span>
+<span class="fc" id="L36">    public String getStatus() { return status; }</span>
+
+<span class="nc" id="L38">    public void setNickname(String nickname) { this.nickname = nickname; }</span>
+<span class="nc" id="L39">    public void setBalanceLimit(double balanceLimit) { this.balanceLimit = balanceLimit; }</span>
+<span class="nc" id="L40">    public void setStatus(String status) { this.status = status; }</span>
+
+    public boolean deposit(double amount) {
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">        if (amount &lt;= 0) return false;</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (balance + amount &gt; balanceLimit) return false;</span>
+<span class="fc" id="L45">        balance += amount;</span>
+<span class="fc" id="L46">        return true;</span>
+    }
+
+    public boolean withdraw(double amount) {
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (amount &lt;= 0) return false;</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (amount &gt; balance) return false;</span>
+<span class="fc" id="L52">        balance -= amount;</span>
+<span class="fc" id="L53">        return true;</span>
+    }
+
+    public void setBalance(double amount) {
+<span class="fc" id="L57">        this.balance = amount;</span>
+<span class="fc" id="L58">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

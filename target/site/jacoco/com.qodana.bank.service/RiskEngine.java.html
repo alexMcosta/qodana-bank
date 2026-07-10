@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RiskEngine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Qodana Bank</a> &gt; <a href="index.source.html" class="el_package">com.qodana.bank.service</a> &gt; <span class="el_source">RiskEngine.java</span></div><h1>RiskEngine.java</h1><pre class="source lang-java linenums">package com.qodana.bank.service;
+
+import com.qodana.bank.model.*;
+import org.springframework.stereotype.Service;
+import java.util.*;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
+@Service
+public class RiskEngine {
+<span class="fc" id="L11">    private final List&lt;FraudRule&gt; rules = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L12">    private final Set&lt;String&gt; blockedRecipients = new HashSet&lt;&gt;();</span>
+
+<span class="fc" id="L14">    public RiskEngine() {</span>
+        // Amount limit rule
+<span class="fc" id="L16">        rules.add((customer, type, account, amount, target, recent) -&gt; {</span>
+<span class="fc bfc" id="L17" title="All 2 branches covered.">            if (amount &gt; 10000) {</span>
+<span class="fc" id="L18">                return new RiskEvaluation(RiskLevel.REVIEW, &quot;High amount transaction&quot;);</span>
+            }
+<span class="fc" id="L20">            return new RiskEvaluation(RiskLevel.ALLOW, &quot;OK&quot;);</span>
+        });
+
+        // Too many transfers rule
+<span class="fc" id="L24">        rules.add((customer, type, account, amount, target, recent) -&gt; {</span>
+<span class="fc" id="L25">            long count = recent.stream()</span>
+<span class="fc" id="L26">                .filter(t -&gt; t.getType().equals(&quot;TRANSFER&quot;))</span>
+<span class="fc" id="L27">                .filter(t -&gt; t.getTimestamp().isAfter(LocalDateTime.now().minusMinutes(5)))</span>
+<span class="fc" id="L28">                .count();</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">            if (count &gt; 3) {</span>
+<span class="fc" id="L30">                return new RiskEvaluation(RiskLevel.REQUIRE_2FA, &quot;Too many transfers in short time&quot;);</span>
+            }
+<span class="fc" id="L32">            return new RiskEvaluation(RiskLevel.ALLOW, &quot;OK&quot;);</span>
+        });
+
+        // Blocked recipient rule
+<span class="fc" id="L36">        rules.add((customer, type, account, amount, target, recent) -&gt; {</span>
+<span class="pc bpc" id="L37" title="1 of 4 branches missed.">            if (target != null &amp;&amp; blockedRecipients.contains(target)) {</span>
+<span class="fc" id="L38">                return new RiskEvaluation(RiskLevel.BLOCK, &quot;Recipient is blocked&quot;);</span>
+            }
+<span class="fc" id="L40">            return new RiskEvaluation(RiskLevel.ALLOW, &quot;OK&quot;);</span>
+        });
+
+        // Large drop in balance
+<span class="fc" id="L44">        rules.add((customer, type, account, amount, target, recent) -&gt; {</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">            if (amount &gt; account.getBalance() * 0.9) {</span>
+<span class="fc" id="L46">                return new RiskEvaluation(RiskLevel.REVIEW, &quot;Transaction consumes &gt;90% of balance&quot;);</span>
+            }
+<span class="fc" id="L48">            return new RiskEvaluation(RiskLevel.ALLOW, &quot;OK&quot;);</span>
+        });
+<span class="fc" id="L50">    }</span>
+
+    public RiskEvaluation evaluate(Customer customer, String type, Account account, double amount, String targetAccount, List&lt;Transaction&gt; recentTransactions) {
+<span class="fc" id="L53">        RiskLevel highestLevel = RiskLevel.ALLOW;</span>
+<span class="fc" id="L54">        String reason = &quot;OK&quot;;</span>
+
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        for (FraudRule rule : rules) {</span>
+<span class="fc" id="L57">            RiskEvaluation eval = rule.evaluate(customer, type, account, amount, targetAccount, recentTransactions);</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">            if (eval.getLevel().ordinal() &gt; highestLevel.ordinal()) {</span>
+<span class="fc" id="L59">                highestLevel = eval.getLevel();</span>
+<span class="fc" id="L60">                reason = eval.getReason();</span>
+            }
+<span class="fc" id="L62">        }</span>
+
+<span class="fc" id="L64">        return new RiskEvaluation(highestLevel, reason);</span>
+    }
+
+    public void blockRecipient(String accountNumber) {
+<span class="fc" id="L68">        blockedRecipients.add(accountNumber);</span>
+<span class="fc" id="L69">    }</span>
+
+    public void unblockRecipient(String accountNumber) {
+<span class="fc" id="L72">        blockedRecipients.remove(accountNumber);</span>
+<span class="fc" id="L73">    }</span>
+
+    public Set&lt;String&gt; getBlockedRecipients() {
+<span class="fc" id="L76">        return Collections.unmodifiableSet(blockedRecipients);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>
