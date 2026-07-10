@@ -1,5 +1,5 @@
-com/qodana/bank/model/Transaction.class
 com/qodana/bank/service/RiskEngine$2.class
+com/qodana/bank/model/Transaction.class
 com/qodana/bank/service/RiskEngine$3.class
 com/qodana/bank/model/Admin.class
 com/qodana/bank/service/BankService.class
@@ -8,9 +8,9 @@ com/qodana/bank/model/TransactionStatus.class
 com/qodana/bank/model/Customer.class
 com/qodana/bank/controller/BankController.class
 com/qodana/bank/model/Account.class
+com/qodana/bank/service/LoggingService.class
 com/qodana/bank/model/User.class
 com/qodana/bank/model/RiskLevel.class
-com/qodana/bank/service/LoggingService.class
 com/qodana/bank/service/RiskEngine$5.class
 com/qodana/bank/model/Message.class
 com/qodana/bank/service/FraudRule.class
