@@ -45,6 +45,12 @@
             <artifactId>commons-collections</artifactId>
             <version>3.2.1</version>
         </dependency>
+        <!-- Drools for rule engine (optional, but good to have) -->
+        <dependency>
+            <groupId>org.kie</groupId>
+            <artifactId>kie-api</artifactId>
+            <version>7.59.0.Final</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

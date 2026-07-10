@@ -1,6 +1,7 @@
 package com.qodana.bank.service;
 
 import com.qodana.bank.model.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -8,6 +9,9 @@ import java.util.*;
 
 @Service
 public class BankService {
+    @Autowired
+    private RiskEngine riskEngine;
+
     private Map<String, User> users = new HashMap<>();
     private List<Message> messages = new ArrayList<>();
     private List<Transaction> transactions = new ArrayList<>();
@@ -71,5 +75,9 @@ public class BankService {
 
     public List<Transaction> getAllTransactions() {
         return transactions;
+    }
+
+    public RiskEngine getRiskEngine() {
+        return riskEngine;
     }
 }

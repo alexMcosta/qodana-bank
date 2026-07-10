@@ -82,6 +82,25 @@ public class BankController {
         String fromAccNum = (String) request.get("fromAccount");
         String toAccNum = (String) request.get("toAccount");
         double amount = Double.parseDouble(request.get("amount").toString());
+
+        Account fromAcc = customer.getAccountByNumber(fromAccNum);
+        if (fromAcc == null) return ResponseEntity.badRequest().body("Source account not found");
+
+        // Risk Check
+        RiskEvaluation eval = bankService.getRiskEngine().evaluate(customer, "TRANSFER", fromAcc, amount, toAccNum, bankService.getTransactionsForUser(username));
+        if (eval.getLevel() == RiskLevel.BLOCK) {
+            bankService.addTransaction(new Transaction(username, "TRANSFER_OUT", fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.BLOCKED));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Transaction blocked: " + eval.getReason());
+        }
+        
+        if (eval.getLevel() == RiskLevel.REVIEW) {
+            bankService.addTransaction(new Transaction(username, "TRANSFER_OUT", fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.UNDER_REVIEW));
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body("Transaction under review: " + eval.getReason());
+        }
+
+        if (eval.getLevel() == RiskLevel.REQUIRE_2FA) {
+            return ResponseEntity.status(HttpStatus.PRECONDITION_REQUIRED).body("2FA required: " + eval.getReason());
+        }
         
         boolean success = customer.transfer(fromAccNum, toAccNum, amount);
         
@@ -252,5 +271,76 @@ public class BankController {
         
         bankService.addMessage(new Message(username, receiver, content));
         return ResponseEntity.ok().build();
+    }
+
+    // Risk Management Endpoints
+    @PostMapping("/admin/risk/block")
+    public ResponseEntity<?> blockRecipient(@RequestBody Map<String, String> request, HttpSession session) {
+        String adminUsername = (String) session.getAttribute("user");
+        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User admin = bankService.getUserByUsername(adminUsername);
+        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        String accountNumber = request.get("accountNumber");
+        bankService.getRiskEngine().blockRecipient(accountNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/admin/risk/unblock")
+    public ResponseEntity<?> unblockRecipient(@RequestBody Map<String, String> request, HttpSession session) {
+        String adminUsername = (String) session.getAttribute("user");
+        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User admin = bankService.getUserByUsername(adminUsername);
+        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        String accountNumber = request.get("accountNumber");
+        bankService.getRiskEngine().unblockRecipient(accountNumber);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/admin/risk/blocked")
+    public ResponseEntity<?> getBlockedRecipients(HttpSession session) {
+        String adminUsername = (String) session.getAttribute("user");
+        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User admin = bankService.getUserByUsername(adminUsername);
+        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        return ResponseEntity.ok(bankService.getRiskEngine().getBlockedRecipients());
+    }
+
+    @PostMapping("/admin/risk/review")
+    public ResponseEntity<?> reviewTransaction(@RequestBody Map<String, String> request, HttpSession session) {
+        String adminUsername = (String) session.getAttribute("user");
+        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User admin = bankService.getUserByUsername(adminUsername);
+        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        String transactionId = request.get("transactionId");
+        String action = request.get("action"); // APPROVE, REJECT
+
+        List<Transaction> transactions = bankService.getAllTransactions();
+        for (Transaction t : transactions) {
+            if (t.getId().equals(transactionId) && t.getStatus() == TransactionStatus.UNDER_REVIEW) {
+                if ("APPROVE".equals(action)) {
+                    try {
+                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField("status");
+                        statusField.setAccessible(true);
+                        statusField.set(t, TransactionStatus.COMPLETED);
+                    } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                    }
+                } else {
+                    try {
+                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField("status");
+                        statusField.setAccessible(true);
+                        statusField.set(t, TransactionStatus.REVERSED);
+                    } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                    }
+                }
+                return ResponseEntity.ok().build();
+            }
+        }
+        return ResponseEntity.notFound().build();
     }
 }

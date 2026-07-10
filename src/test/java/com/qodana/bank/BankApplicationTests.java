@@ -247,4 +247,57 @@ class BankApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.savingsBalance", is(9999.0)));
     }
+
+    @Test
+    void testRiskEngineRules() throws Exception {
+        Customer alice = new Customer("alice", "pass1");
+        Account ch = new Account("ACC-1", "CHECKING", "Checking", 10000.0);
+        alice.addAccount(ch);
+
+        // 1. High amount rule
+        RiskEvaluation eval1 = bankService.getRiskEngine().evaluate(alice, "TRANSFER", ch, 20000.0, "TARGET-1", List.of());
+        assertEquals(RiskLevel.REVIEW, eval1.getLevel());
+
+        // 2. Blocked recipient rule
+        bankService.getRiskEngine().blockRecipient("BLOCKED-1");
+        RiskEvaluation eval2 = bankService.getRiskEngine().evaluate(alice, "TRANSFER", ch, 100.0, "BLOCKED-1", List.of());
+        assertEquals(RiskLevel.BLOCK, eval2.getLevel());
+
+        // 3. Frequent transfers rule
+        Transaction t1 = new Transaction("alice", "TRANSFER", "CH", 10.0, 990.0, TransactionStatus.COMPLETED);
+        Transaction t2 = new Transaction("alice", "TRANSFER", "CH", 10.0, 980.0, TransactionStatus.COMPLETED);
+        Transaction t3 = new Transaction("alice", "TRANSFER", "CH", 10.0, 970.0, TransactionStatus.COMPLETED);
+        Transaction t4 = new Transaction("alice", "TRANSFER", "CH", 10.0, 960.0, TransactionStatus.COMPLETED);
+        
+        RiskEvaluation eval3 = bankService.getRiskEngine().evaluate(alice, "TRANSFER", ch, 10.0, "TARGET-2", List.of(t1, t2, t3, t4));
+        assertEquals(RiskLevel.REQUIRE_2FA, eval3.getLevel());
+
+        // 4. Large balance drop
+        RiskEvaluation eval4 = bankService.getRiskEngine().evaluate(alice, "TRANSFER", ch, 9500.0, "TARGET-3", List.of());
+        assertEquals(RiskLevel.REVIEW, eval4.getLevel());
+    }
+
+    @Test
+    void testAdminFraudManagement() throws Exception {
+        MockHttpSession adminSession = new MockHttpSession();
+        adminSession.setAttribute("user", "admin");
+
+        // Block recipient
+        Map<String, String> blockReq = new HashMap<>();
+        blockReq.put("accountNumber", "BAD-ACCOUNT");
+        mockMvc.perform(post("/api/admin/risk/block").session(adminSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(blockReq)))
+                .andExpect(status().isOk());
+        
+        assertTrue(bankService.getRiskEngine().getBlockedRecipients().contains("BAD-ACCOUNT"));
+
+        // Unblock recipient
+        mockMvc.perform(post("/api/admin/risk/unblock").session(adminSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(blockReq)))
+                .andExpect(status().isOk());
+        
+        assertFalse(bankService.getRiskEngine().getBlockedRecipients().contains("BAD-ACCOUNT"));
+    }
 }
