@@ -1,4 +1,4 @@
-package com.qodana.bank.service;
+package main.java.com.qodana.bank.service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

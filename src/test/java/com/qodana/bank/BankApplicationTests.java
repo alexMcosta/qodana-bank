@@ -1,4 +1,4 @@
-package com.qodana.bank;
+package test.java.com.qodana.bank;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qodana.bank.model.*;
