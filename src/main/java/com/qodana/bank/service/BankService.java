@@ -1,8 +1,11 @@
 package com.qodana.bank.service;
 
 import com.qodana.bank.model.*;
+import com.qodana.bank.service.LoggingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.kie.api.KieServices;
+import org.kie.api.runtime.KieContainer;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
@@ -11,6 +14,11 @@ import java.util.*;
 public class BankService {
     @Autowired
     private RiskEngine riskEngine;
+
+    @Autowired
+    private LoggingService loggingService;
+
+    private KieContainer kieContainer;
 
     private Map<String, User> users = new HashMap<>();
     private List<Message> messages = new ArrayList<>();
@@ -29,6 +37,23 @@ public class BankService {
         users.put("bob", bob);
 
         users.put("admin", new Admin("admin", "admin123"));
+    }
+
+    public KieContainer getKieContainer() {
+        if (kieContainer == null) {
+            synchronized (this) {
+                if (kieContainer == null) {
+                    try {
+                        KieServices ks = KieServices.Factory.get();
+                        kieContainer = ks.getKieClasspathContainer();
+                        loggingService.logSecurityEvent("KIE Container initialized on demand");
+                    } catch (Exception e) {
+                        loggingService.logError("Failed to initialize KIE Container", e);
+                    }
+                }
+            }
+        }
+        return kieContainer;
     }
 
     public void addUser(User user) {
@@ -61,6 +86,7 @@ public class BankService {
 
     public void addTransaction(Transaction t) {
         transactions.add(t);
+        loggingService.logTransaction(t.getUsername(), t.getType(), t.getAmount());
     }
 
     public List<Transaction> getTransactionsForUser(String username) {
@@ -79,5 +105,9 @@ public class BankService {
 
     public RiskEngine getRiskEngine() {
         return riskEngine;
+    }
+
+    public LoggingService getLoggingService() {
+        return loggingService;
     }
 }

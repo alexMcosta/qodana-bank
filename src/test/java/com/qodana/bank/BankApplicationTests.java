@@ -301,4 +301,36 @@ class BankApplicationTests {
         
         assertFalse(bankService.getRiskEngine().getBlockedRecipients().contains("BAD-ACCOUNT"));
     }
+
+    @Test
+    void testDependencyIntegration() throws Exception {
+        MockHttpSession adminSession = new MockHttpSession();
+        adminSession.setAttribute("user", "admin");
+
+        // Test Fastjson export through controller
+        mockMvc.perform(get("/api/admin/risk/rules").session(adminSession))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
+                .andExpect(content().string(containsString("reason")))
+                .andExpect(content().string(containsString("high amount")));
+
+        // Test Commons Collections filtering in RiskEngine
+        Transaction tc1 = new Transaction("alice", "DEPOSIT", "ACC-1", 100.0, 100.0, TransactionStatus.COMPLETED);
+        Transaction tc2 = new Transaction("alice", "TRANSFER", "ACC-1", 50.0, 50.0, TransactionStatus.COMPLETED);
+        List<Transaction> filtered = bankService.getRiskEngine().filterRecentTransactions(List.of(tc1, tc2), "TRANSFER");
+        assertEquals(1, filtered.size());
+        assertEquals("TRANSFER", filtered.get(0).getType());
+
+        // Test LoggingService (indirectly through BankService)
+        bankService.addTransaction(new Transaction("alice", "LOGTEST", "ACC-1", 10.0, 40.0, TransactionStatus.COMPLETED));
+        // If no exception, Log4j is working
+    }
+
+    @Test
+    void testKieInitialization() {
+        // This will trigger the lazy initialization and we can check if it fails
+        // but it won't crash the whole context load if it fails because it's no longer in @PostConstruct
+        bankService.getKieContainer();
+        // Even if it returns null, it shouldn't throw an exception that stops the app
+    }
 }

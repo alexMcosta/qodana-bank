@@ -326,6 +326,7 @@ public class BankController {
                         java.lang.reflect.Field statusField = Transaction.class.getDeclaredField("status");
                         statusField.setAccessible(true);
                         statusField.set(t, TransactionStatus.COMPLETED);
+                        bankService.getLoggingService().logSecurityEvent("Transaction " + transactionId + " APPROVED by admin " + adminUsername);
                     } catch (Exception e) {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                     }
@@ -334,6 +335,7 @@ public class BankController {
                         java.lang.reflect.Field statusField = Transaction.class.getDeclaredField("status");
                         statusField.setAccessible(true);
                         statusField.set(t, TransactionStatus.REVERSED);
+                        bankService.getLoggingService().logSecurityEvent("Transaction " + transactionId + " REJECTED by admin " + adminUsername);
                     } catch (Exception e) {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                     }
@@ -342,5 +344,15 @@ public class BankController {
             }
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/admin/risk/rules")
+    public ResponseEntity<String> getRiskRules(HttpSession session) {
+        String adminUsername = (String) session.getAttribute("user");
+        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User admin = bankService.getUserByUsername(adminUsername);
+        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        return ResponseEntity.ok(bankService.getRiskEngine().exportRulesToJson());
     }
 }

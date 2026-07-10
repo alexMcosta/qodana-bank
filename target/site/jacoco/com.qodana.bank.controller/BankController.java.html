@@ -326,22 +326,34 @@ import java.util.Map;
 <span class="nc" id="L326">                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField(&quot;status&quot;);</span>
 <span class="nc" id="L327">                        statusField.setAccessible(true);</span>
 <span class="nc" id="L328">                        statusField.set(t, TransactionStatus.COMPLETED);</span>
-<span class="nc" id="L329">                    } catch (Exception e) {</span>
-<span class="nc" id="L330">                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();</span>
-<span class="nc" id="L331">                    }</span>
+<span class="nc" id="L329">                        bankService.getLoggingService().logSecurityEvent(&quot;Transaction &quot; + transactionId + &quot; APPROVED by admin &quot; + adminUsername);</span>
+<span class="nc" id="L330">                    } catch (Exception e) {</span>
+<span class="nc" id="L331">                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();</span>
+<span class="nc" id="L332">                    }</span>
                 } else {
                     try {
-<span class="nc" id="L334">                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField(&quot;status&quot;);</span>
-<span class="nc" id="L335">                        statusField.setAccessible(true);</span>
-<span class="nc" id="L336">                        statusField.set(t, TransactionStatus.REVERSED);</span>
-<span class="nc" id="L337">                    } catch (Exception e) {</span>
-<span class="nc" id="L338">                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();</span>
-<span class="nc" id="L339">                    }</span>
+<span class="nc" id="L335">                        java.lang.reflect.Field statusField = Transaction.class.getDeclaredField(&quot;status&quot;);</span>
+<span class="nc" id="L336">                        statusField.setAccessible(true);</span>
+<span class="nc" id="L337">                        statusField.set(t, TransactionStatus.REVERSED);</span>
+<span class="nc" id="L338">                        bankService.getLoggingService().logSecurityEvent(&quot;Transaction &quot; + transactionId + &quot; REJECTED by admin &quot; + adminUsername);</span>
+<span class="nc" id="L339">                    } catch (Exception e) {</span>
+<span class="nc" id="L340">                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();</span>
+<span class="nc" id="L341">                    }</span>
                 }
-<span class="nc" id="L341">                return ResponseEntity.ok().build();</span>
+<span class="nc" id="L343">                return ResponseEntity.ok().build();</span>
             }
-<span class="nc" id="L343">        }</span>
-<span class="nc" id="L344">        return ResponseEntity.notFound().build();</span>
+<span class="nc" id="L345">        }</span>
+<span class="nc" id="L346">        return ResponseEntity.notFound().build();</span>
+    }
+
+    @GetMapping(&quot;/admin/risk/rules&quot;)
+    public ResponseEntity&lt;String&gt; getRiskRules(HttpSession session) {
+<span class="fc" id="L351">        String adminUsername = (String) session.getAttribute(&quot;user&quot;);</span>
+<span class="pc bpc" id="L352" title="1 of 2 branches missed.">        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+<span class="fc" id="L353">        User admin = bankService.getUserByUsername(adminUsername);</span>
+<span class="pc bpc" id="L354" title="2 of 4 branches missed.">        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();</span>
+
+<span class="fc" id="L356">        return ResponseEntity.ok(bankService.getRiskEngine().exportRulesToJson());</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
