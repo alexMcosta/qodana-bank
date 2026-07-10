@@ -22,7 +22,7 @@ jobs:
 
       - name: Bootstrap
         run: |
-          mvn clean install -DskipTests
+          mvn clean package
       
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@v2026.1
