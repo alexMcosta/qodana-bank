@@ -1,4 +1,4 @@
-package com.qodana.bank.service;
+package main.java.com.qodana.bank.service;
 
 import com.qodana.bank.model.*;
 import java.util.List;
