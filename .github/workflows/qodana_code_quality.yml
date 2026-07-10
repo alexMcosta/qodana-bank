@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches: # Specify your branches here
-      - ac-123
+      - AC-123
 
 jobs:
   qodana:
