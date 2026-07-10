@@ -23,10 +23,10 @@ profile:
 #    paths:
 #      - <path/where/not/run/inspection>
 
-projectJDK: "11" #(Applied in CI/CD pipeline)
+projectJDK: "21" #(Applied in CI/CD pipeline)
 
 #Execute shell command before Qodana execution (Applied in CI/CD pipeline)
-#bootstrap: mvn clean install -DskipTests
+#bootstrap: sh ./prepare-qodana.sh
 
 #Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
 #plugins:
