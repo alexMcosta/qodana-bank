@@ -1,8 +1,10 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-Qodana Bank,com.qodana.bank.model,Customer,0,68,0,8,0,16,0,9,0,5
+Qodana Bank,com.qodana.bank.model,Customer,28,113,8,14,6,28,7,12,0,8
+Qodana Bank,com.qodana.bank.model,TransactionStatus,0,27,0,0,0,5,0,1,0,1
+Qodana Bank,com.qodana.bank.model,Transaction,42,52,0,0,2,18,1,9,1,9
 Qodana Bank,com.qodana.bank.model,Message,0,21,0,0,0,8,0,4,0,4
 Qodana Bank,com.qodana.bank.model,Admin,0,6,0,0,0,2,0,1,0,1
 Qodana Bank,com.qodana.bank.model,User,0,23,0,0,0,8,0,4,0,4
 Qodana Bank,com.qodana.bank,BankApplication,5,3,0,0,2,1,1,1,1,1
-Qodana Bank,com.qodana.bank.service,BankService,13,106,3,7,2,19,3,10,1,7
-Qodana Bank,com.qodana.bank.controller,BankController,16,159,4,14,1,36,4,12,0,7
+Qodana Bank,com.qodana.bank.service,BankService,16,144,4,10,3,28,5,13,2,9
+Qodana Bank,com.qodana.bank.controller,BankController,171,420,30,32,18,87,29,16,3,11

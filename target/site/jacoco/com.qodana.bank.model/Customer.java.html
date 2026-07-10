@@ -30,5 +30,38 @@ public class Customer extends User {
         }
 <span class="fc" id="L31">        return false;</span>
     }
+
+    public void deposit(String account, double amount) {
+<span class="pc bpc" id="L35" title="1 of 2 branches missed.">        if (amount &lt;= 0) return;</span>
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (&quot;SAVINGS&quot;.equalsIgnoreCase(account)) {</span>
+<span class="nc" id="L37">            savingsBalance += amount;</span>
+        } else {
+<span class="fc" id="L39">            checkingBalance += amount;</span>
+        }
+<span class="fc" id="L41">    }</span>
+
+    public boolean withdraw(String account, double amount) {
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (amount &lt;= 0) return false;</span>
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (&quot;SAVINGS&quot;.equalsIgnoreCase(account)) {</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">            if (amount &lt;= savingsBalance) {</span>
+<span class="nc" id="L47">                savingsBalance -= amount;</span>
+<span class="nc" id="L48">                return true;</span>
+            }
+        } else {
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">            if (amount &lt;= checkingBalance) {</span>
+<span class="fc" id="L52">                checkingBalance -= amount;</span>
+<span class="fc" id="L53">                return true;</span>
+            }
+        }
+<span class="nc" id="L56">        return false;</span>
+    }
+
+    public void setBalance(String account, double amount) {
+<span class="pc bpc" id="L60" title="1 of 2 branches missed.">        if (&quot;SAVINGS&quot;.equalsIgnoreCase(account)) {</span>
+<span class="fc" id="L61">            savingsBalance = amount;</span>
+        } else {
+<span class="nc" id="L63">            checkingBalance = amount;</span>
+        }
+<span class="fc" id="L65">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

@@ -10,40 +10,59 @@ import java.util.*;
 <span class="fc" id="L10">public class BankService {</span>
 <span class="fc" id="L11">    private Map&lt;String, User&gt; users = new HashMap&lt;&gt;();</span>
 <span class="fc" id="L12">    private List&lt;Message&gt; messages = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L13">    private List&lt;Transaction&gt; transactions = new ArrayList&lt;&gt;();</span>
 
     @PostConstruct
     public void seedData() {
-<span class="fc" id="L16">        users.put(&quot;alice&quot;, new Customer(&quot;alice&quot;, &quot;pass1&quot;, 1000.0, 5000.0));</span>
-<span class="fc" id="L17">        users.put(&quot;bob&quot;, new Customer(&quot;bob&quot;, &quot;pass2&quot;, 500.0, 200.0));</span>
-<span class="fc" id="L18">        users.put(&quot;admin&quot;, new Admin(&quot;admin&quot;, &quot;admin123&quot;));</span>
-<span class="fc" id="L19">    }</span>
+<span class="fc" id="L17">        users.put(&quot;alice&quot;, new Customer(&quot;alice&quot;, &quot;pass1&quot;, 1000.0, 5000.0));</span>
+<span class="fc" id="L18">        users.put(&quot;bob&quot;, new Customer(&quot;bob&quot;, &quot;pass2&quot;, 500.0, 200.0));</span>
+<span class="fc" id="L19">        users.put(&quot;admin&quot;, new Admin(&quot;admin&quot;, &quot;admin123&quot;));</span>
+<span class="fc" id="L20">    }</span>
 
     public void addUser(User user) {
-<span class="nc" id="L22">        users.put(user.getUsername(), user);</span>
-<span class="nc" id="L23">    }</span>
+<span class="nc" id="L23">        users.put(user.getUsername(), user);</span>
+<span class="nc" id="L24">    }</span>
 
     public User authenticate(String username, String password) {
-<span class="fc" id="L26">        User u = users.get(username);</span>
-<span class="fc bfc" id="L27" title="All 4 branches covered.">        if (u != null &amp;&amp; u.authenticate(password)) return u;</span>
-<span class="fc" id="L28">        return null;</span>
+<span class="fc" id="L27">        User u = users.get(username);</span>
+<span class="fc bfc" id="L28" title="All 4 branches covered.">        if (u != null &amp;&amp; u.authenticate(password)) return u;</span>
+<span class="fc" id="L29">        return null;</span>
     }
 
-<span class="fc" id="L31">    public void addMessage(Message m) { messages.add(m); }</span>
+<span class="fc" id="L32">    public void addMessage(Message m) { messages.add(m); }</span>
     
-<span class="fc" id="L33">    public List&lt;Message&gt; getAllMessages() { return messages; }</span>
+<span class="fc" id="L34">    public List&lt;Message&gt; getAllMessages() { return messages; }</span>
     
     public List&lt;Message&gt; getMessagesForUser(String username) {
-<span class="fc" id="L36">        List&lt;Message&gt; userMsgs = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L37" title="All 2 branches covered.">        for (Message m : messages) {</span>
-<span class="pc bpc" id="L38" title="3 of 4 branches missed.">            if (m.getSender().equals(username) || m.getReceiver().equals(username)) {</span>
-<span class="fc" id="L39">                userMsgs.add(m);</span>
+<span class="fc" id="L37">        List&lt;Message&gt; userMsgs = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        for (Message m : messages) {</span>
+<span class="pc bpc" id="L39" title="3 of 4 branches missed.">            if (m.getSender().equals(username) || m.getReceiver().equals(username)) {</span>
+<span class="fc" id="L40">                userMsgs.add(m);</span>
             }
-<span class="fc" id="L41">        }</span>
-<span class="fc" id="L42">        return userMsgs;</span>
+<span class="fc" id="L42">        }</span>
+<span class="fc" id="L43">        return userMsgs;</span>
     }
 
     public User getUserByUsername(String username) {
-<span class="fc" id="L46">        return users.get(username);</span>
+<span class="fc" id="L47">        return users.get(username);</span>
+    }
+
+    public void addTransaction(Transaction t) {
+<span class="fc" id="L51">        transactions.add(t);</span>
+<span class="fc" id="L52">    }</span>
+
+    public List&lt;Transaction&gt; getTransactionsForUser(String username) {
+<span class="fc" id="L55">        List&lt;Transaction&gt; userTransactions = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        for (Transaction t : transactions) {</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">            if (t.getUsername().equals(username)) {</span>
+<span class="fc" id="L58">                userTransactions.add(t);</span>
+            }
+<span class="fc" id="L60">        }</span>
+<span class="fc" id="L61">        return userTransactions;</span>
+    }
+
+    public List&lt;Transaction&gt; getAllTransactions() {
+<span class="nc" id="L65">        return transactions;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

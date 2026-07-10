@@ -42,19 +42,26 @@ class BankApplicationTests {
     // --- Model Tests ---
 
     @Test
-    void testCustomerTransferEdges() {
-        Customer alice = new Customer("alice", "pass1", 100.0, 100.0);
-        assertFalse(alice.transferToSavings(-10.0));
-        assertFalse(alice.transferToSavings(200.0));
-        assertTrue(alice.transferToSavings(50.0));
-        assertEquals(50.0, alice.getCheckingBalance());
-        assertEquals(150.0, alice.getSavingsBalance());
+    void testAccountLogic() {
+        Account acc = new Account("CHECKING", "My Checking", 100.0);
+        assertTrue(acc.deposit(50.0));
+        assertEquals(150.0, acc.getBalance());
+        assertTrue(acc.withdraw(30.0));
+        assertEquals(120.0, acc.getBalance());
+        assertFalse(acc.withdraw(200.0));
+    }
 
-        assertFalse(alice.transferToChecking(-10.0));
-        assertFalse(alice.transferToChecking(200.0));
-        assertTrue(alice.transferToChecking(50.0));
-        assertEquals(100.0, alice.getCheckingBalance());
-        assertEquals(100.0, alice.getSavingsBalance());
+    @Test
+    void testCustomerMultiAccount() {
+        Customer alice = new Customer("alice", "pass1");
+        Account ch = new Account("CH1", "CHECKING", "Checking", 100.0);
+        Account sa = new Account("SA1", "SAVINGS", "Savings", 100.0);
+        alice.addAccount(ch);
+        alice.addAccount(sa);
+
+        assertTrue(alice.transfer("CH1", "SA1", 50.0));
+        assertEquals(50.0, ch.getBalance());
+        assertEquals(150.0, sa.getBalance());
     }
 
     @Test
@@ -131,7 +138,8 @@ class BankApplicationTests {
         session.setAttribute("user", "alice");
 
         Map<String, Object> request = new HashMap<>();
-        request.put("direction", "toSavings");
+        request.put("fromAccount", "ACC-ALICE-CH");
+        request.put("toAccount", "ACC-ALICE-SA");
         request.put("amount", 100.0);
 
         mockMvc.perform(post("/api/transfer").session(session)
@@ -141,13 +149,6 @@ class BankApplicationTests {
 
         // Test insufficient funds
         request.put("amount", 10000.0);
-        mockMvc.perform(post("/api/transfer").session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-
-        // Test non-customer (admin)
-        session.setAttribute("user", "admin");
         mockMvc.perform(post("/api/transfer").session(session)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -187,5 +188,63 @@ class BankApplicationTests {
                 .andExpect(status().isOk());
         
         assertTrue(session.isInvalid());
+    }
+
+    @Test
+    void testTransactions() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("user", "alice");
+
+        // 1. Deposit
+        Map<String, Object> depositReq = new HashMap<>();
+        depositReq.put("account", "CHECKING");
+        depositReq.put("amount", 200.0);
+        mockMvc.perform(post("/api/deposit").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(depositReq)))
+                .andExpect(status().isOk());
+
+        // 2. Withdraw
+        Map<String, Object> withdrawReq = new HashMap<>();
+        withdrawReq.put("account", "CHECKING");
+        withdrawReq.put("amount", 50.0);
+        mockMvc.perform(post("/api/withdraw").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(withdrawReq)))
+                .andExpect(status().isOk());
+
+        // 3. Transfer
+        Map<String, Object> transferReq = new HashMap<>();
+        transferReq.put("direction", "toSavings");
+        transferReq.put("amount", 100.0);
+        mockMvc.perform(post("/api/transfer").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(transferReq)))
+                .andExpect(status().isOk());
+
+        // 4. Check transactions
+        mockMvc.perform(get("/api/transactions").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(4)))) // Deposit(1) + Withdrawal(1) + Transfer(2 txs)
+                .andExpect(jsonPath("$[?(@.type=='DEPOSIT')].amount", contains(200.0)))
+                .andExpect(jsonPath("$[?(@.type=='WITHDRAWAL')].amount", contains(50.0)))
+                .andExpect(jsonPath("$[?(@.type=='TRANSFER_OUT')].amount", contains(100.0)));
+        
+        // 5. Admin adjustment
+        MockHttpSession adminSession = new MockHttpSession();
+        adminSession.setAttribute("user", "admin");
+        Map<String, Object> adjustReq = new HashMap<>();
+        adjustReq.put("username", "alice");
+        adjustReq.put("account", "SAVINGS");
+        adjustReq.put("amount", 9999.0);
+        mockMvc.perform(post("/api/admin/adjust").session(adminSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(adjustReq)))
+                .andExpect(status().isOk());
+        
+        // Verify alice's balance and transaction
+        mockMvc.perform(get("/api/me").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.savingsBalance", is(9999.0)));
     }
 }

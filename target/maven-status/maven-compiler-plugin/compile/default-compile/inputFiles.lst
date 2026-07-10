@@ -1,7 +1,9 @@
+/Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/model/TransactionStatus.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/model/Message.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/model/Customer.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/service/BankService.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/BankApplication.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/controller/BankController.java
+/Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/model/Transaction.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/model/User.java
 /Users/alexandercosta/learning/Kotlin/Qodana Bank/src/main/java/com/qodana/bank/model/Admin.java
