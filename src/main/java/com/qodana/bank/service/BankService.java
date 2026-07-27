@@ -12,9 +12,9 @@ public class BankService {
     @Autowired
     private RiskEngine riskEngine;
 
-    private Map<String, User> users = new HashMap<>();
-    private List<Message> messages = new ArrayList<>();
-    private List<Transaction> transactions = new ArrayList<>();
+    private final Map<String, User> users = new HashMap<>();
+    private final List<Message> messages = new ArrayList<>();
+    private final List<Transaction> transactions = new ArrayList<>();
 
     @PostConstruct
     public void seedData() {
