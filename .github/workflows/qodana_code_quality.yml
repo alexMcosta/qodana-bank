@@ -4,7 +4,10 @@ on:
   pull_request:
   push:
     branches: # Specify your branches here
-      - AC-QuickFix
+      - initial
+      - baseline
+      - quickfix
+      - Junirepair
 
 jobs:
   qodana:
