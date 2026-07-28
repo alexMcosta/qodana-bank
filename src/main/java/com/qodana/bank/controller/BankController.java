@@ -18,6 +18,22 @@ public class BankController {
     @Autowired
     private BankService bankService;
 
+    private User getAuthenticatedUser(HttpSession session) {
+        String username = (String) session.getAttribute("user");
+        if (username == null) return null;
+        return bankService.getUserByUsername(username);
+    }
+
+    private Customer getAuthenticatedCustomer(HttpSession session) {
+        User user = getAuthenticatedUser(session);
+        return (user instanceof Customer) ? (Customer) user : null;
+    }
+
+    private User getAuthenticatedAdmin(HttpSession session) {
+        User user = getAuthenticatedUser(session);
+        return (user != null && user.isAdmin()) ? user : null;
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> credentials, HttpSession session) {
         String username = credentials.get("username");
@@ -37,48 +53,38 @@ public class BankController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        return ResponseEntity.ok(bankService.getUserByUsername(username));
+        User user = getAuthenticatedUser(session);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping("/accounts")
     public ResponseEntity<?> getAccounts(HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        Customer customer = getAuthenticatedCustomer(session);
+        if (customer == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
-        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body("Not a customer");
-        
-        return ResponseEntity.ok(((Customer) user).getAccounts());
+        return ResponseEntity.ok(customer.getAccounts());
     }
 
     @PostMapping("/accounts")
     public ResponseEntity<?> createAccount(@RequestBody Map<String, String> request, HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        
-        User user = bankService.getUserByUsername(username);
-        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body("Not a customer");
+        Customer customer = getAuthenticatedCustomer(session);
+        if (customer == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
         String type = request.getOrDefault("type", "CHECKING");
         String nickname = request.getOrDefault("nickname", type);
         
         Account newAcc = new Account(type, nickname, 0.0);
-        ((Customer) user).addAccount(newAcc);
+        customer.addAccount(newAcc);
         
         return ResponseEntity.ok(newAcc);
     }
 
     @PostMapping("/transfer")
     public ResponseEntity<?> transfer(@RequestBody Map<String, Object> request, HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        Customer customer = getAuthenticatedCustomer(session);
+        if (customer == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
-        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body("Not a customer");
-        
-        Customer customer = (Customer) user;
         String fromAccNum = (String) request.get("fromAccount");
         String toAccNum = (String) request.get("toAccount");
         double amount = Double.parseDouble(request.get("amount").toString());
@@ -87,14 +93,14 @@ public class BankController {
         if (fromAcc == null) return ResponseEntity.badRequest().body("Source account not found");
 
         // Risk Check
-        RiskEvaluation eval = bankService.getRiskEngine().evaluate(customer, "TRANSFER", fromAcc, amount, toAccNum, bankService.getTransactionsForUser(username));
+        RiskEvaluation eval = bankService.getRiskEngine().evaluate(customer, "TRANSFER", fromAcc, amount, toAccNum, bankService.getTransactionsForUser(customer.getUsername()));
         if (eval.getLevel() == RiskLevel.BLOCK) {
-            bankService.addTransaction(new Transaction(username, "TRANSFER_OUT", fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.BLOCKED));
+            bankService.addTransaction(new Transaction(customer.getUsername(), "TRANSFER_OUT", fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.BLOCKED));
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Transaction blocked: " + eval.getReason());
         }
         
         if (eval.getLevel() == RiskLevel.REVIEW) {
-            bankService.addTransaction(new Transaction(username, "TRANSFER_OUT", fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.UNDER_REVIEW));
+            bankService.addTransaction(new Transaction(customer.getUsername(), "TRANSFER_OUT", fromAcc.getNickname(), amount, fromAcc.getBalance(), TransactionStatus.UNDER_REVIEW));
             return ResponseEntity.status(HttpStatus.ACCEPTED).body("Transaction under review: " + eval.getReason());
         }
 
@@ -107,34 +113,30 @@ public class BankController {
         if (success) {
             Account from = customer.getAccountByNumber(fromAccNum);
             Account to = customer.getAccountByNumber(toAccNum);
-            bankService.addTransaction(new Transaction(username, "TRANSFER_OUT", from.getNickname(), amount, 
+            bankService.addTransaction(new Transaction(customer.getUsername(), "TRANSFER_OUT", from.getNickname(), amount, 
                 from.getBalance(), TransactionStatus.COMPLETED));
-            bankService.addTransaction(new Transaction(username, "TRANSFER_IN", to.getNickname(), amount, 
+            bankService.addTransaction(new Transaction(customer.getUsername(), "TRANSFER_IN", to.getNickname(), amount, 
                 to.getBalance(), TransactionStatus.COMPLETED));
             return ResponseEntity.ok().build();
         }
         
-        bankService.addTransaction(new Transaction(username, "TRANSFER_FAILED", fromAccNum, amount, 
+        bankService.addTransaction(new Transaction(customer.getUsername(), "TRANSFER_FAILED", fromAccNum, amount, 
             0, TransactionStatus.FAILED));
         return ResponseEntity.badRequest().body("Insufficient funds or invalid accounts");
     }
 
     @PostMapping("/deposit")
     public ResponseEntity<?> deposit(@RequestBody Map<String, Object> request, HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        Customer customer = getAuthenticatedCustomer(session);
+        if (customer == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
-        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body("Not a customer");
-        
-        Customer customer = (Customer) user;
         String accountNumber = (String) request.get("accountNumber");
         double amount = Double.parseDouble(request.get("amount").toString());
         
         boolean success = customer.deposit(accountNumber, amount);
         if (success) {
             Account acc = customer.getAccountByNumber(accountNumber);
-            bankService.addTransaction(new Transaction(username, "DEPOSIT", acc.getNickname(), amount, acc.getBalance(), TransactionStatus.COMPLETED));
+            bankService.addTransaction(new Transaction(customer.getUsername(), "DEPOSIT", acc.getNickname(), amount, acc.getBalance(), TransactionStatus.COMPLETED));
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.badRequest().body("Deposit failed");
@@ -142,13 +144,9 @@ public class BankController {
 
     @PostMapping("/withdraw")
     public ResponseEntity<?> withdraw(@RequestBody Map<String, Object> request, HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        Customer customer = getAuthenticatedCustomer(session);
+        if (customer == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
-        if (!(user instanceof Customer)) return ResponseEntity.badRequest().body("Not a customer");
-        
-        Customer customer = (Customer) user;
         String accountNumber = (String) request.get("accountNumber");
         double amount = Double.parseDouble(request.get("amount").toString());
         
@@ -156,21 +154,18 @@ public class BankController {
         
         if (success) {
             Account acc = customer.getAccountByNumber(accountNumber);
-            bankService.addTransaction(new Transaction(username, "WITHDRAWAL", acc.getNickname(), amount, acc.getBalance(), TransactionStatus.COMPLETED));
+            bankService.addTransaction(new Transaction(customer.getUsername(), "WITHDRAWAL", acc.getNickname(), amount, acc.getBalance(), TransactionStatus.COMPLETED));
             return ResponseEntity.ok().build();
         } else {
-            bankService.addTransaction(new Transaction(username, "WITHDRAWAL_FAILED", accountNumber, amount, 0, TransactionStatus.FAILED));
+            bankService.addTransaction(new Transaction(customer.getUsername(), "WITHDRAWAL_FAILED", accountNumber, amount, 0, TransactionStatus.FAILED));
             return ResponseEntity.badRequest().body("Insufficient funds");
         }
     }
 
     @PostMapping("/admin/adjust")
     public ResponseEntity<?> adjustBalance(@RequestBody Map<String, Object> request, HttpSession session) {
-        String adminUsername = (String) session.getAttribute("user");
-        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        
-        User admin = bankService.getUserByUsername(adminUsername);
-        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        User admin = getAuthenticatedAdmin(session);
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         
         String targetUser = (String) request.get("username");
         String accountNumber = (String) request.get("accountNumber");
@@ -195,10 +190,9 @@ public class BankController {
                                             @RequestParam(required = false) String account,
                                             @RequestParam(required = false) String targetUser,
                                             HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = getAuthenticatedUser(session);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
         List<Transaction> txs;
         
         if (user.isAdmin()) {
@@ -208,7 +202,7 @@ public class BankController {
                 txs = new java.util.ArrayList<>(bankService.getAllTransactions());
             }
         } else {
-            txs = bankService.getTransactionsForUser(username);
+            txs = bankService.getTransactionsForUser(user.getUsername());
         }
         
         // Basic filtering
@@ -225,16 +219,15 @@ public class BankController {
     @GetMapping("/transactions/export")
     public ResponseEntity<String> exportTransactions(@RequestParam(required = false) String targetUser,
                                                      HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = getAuthenticatedUser(session);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
         List<Transaction> txs;
         
         if (user.isAdmin() && targetUser != null && !targetUser.isEmpty()) {
             txs = bankService.getTransactionsForUser(targetUser);
         } else {
-            txs = bankService.getTransactionsForUser(username);
+            txs = bankService.getTransactionsForUser(user.getUsername());
         }
         
         StringBuilder csv = new StringBuilder("Timestamp,Type,Account,Amount,BalanceAfter,Status\n");
@@ -250,36 +243,32 @@ public class BankController {
 
     @GetMapping("/messages")
     public ResponseEntity<List<Message>> getMessages(HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = getAuthenticatedUser(session);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
-        User user = bankService.getUserByUsername(username);
         if (user.isAdmin()) {
             return ResponseEntity.ok(bankService.getAllMessages());
         } else {
-            return ResponseEntity.ok(bankService.getMessagesForUser(username));
+            return ResponseEntity.ok(bankService.getMessagesForUser(user.getUsername()));
         }
     }
 
     @PostMapping("/messages")
     public ResponseEntity<?> sendMessage(@RequestBody Map<String, String> request, HttpSession session) {
-        String username = (String) session.getAttribute("user");
-        if (username == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = getAuthenticatedUser(session);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         
         String receiver = request.get("receiver");
         String content = request.get("content");
         
-        bankService.addMessage(new Message(username, receiver, content));
+        bankService.addMessage(new Message(user.getUsername(), receiver, content));
         return ResponseEntity.ok().build();
     }
 
     // Risk Management Endpoints
     @PostMapping("/admin/risk/block")
     public ResponseEntity<?> blockRecipient(@RequestBody Map<String, String> request, HttpSession session) {
-        String adminUsername = (String) session.getAttribute("user");
-        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        User admin = bankService.getUserByUsername(adminUsername);
-        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (getAuthenticatedAdmin(session) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
         String accountNumber = request.get("accountNumber");
         bankService.getRiskEngine().blockRecipient(accountNumber);
@@ -288,10 +277,7 @@ public class BankController {
 
     @PostMapping("/admin/risk/unblock")
     public ResponseEntity<?> unblockRecipient(@RequestBody Map<String, String> request, HttpSession session) {
-        String adminUsername = (String) session.getAttribute("user");
-        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        User admin = bankService.getUserByUsername(adminUsername);
-        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (getAuthenticatedAdmin(session) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
         String accountNumber = request.get("accountNumber");
         bankService.getRiskEngine().unblockRecipient(accountNumber);
@@ -300,20 +286,14 @@ public class BankController {
 
     @GetMapping("/admin/risk/blocked")
     public ResponseEntity<?> getBlockedRecipients(HttpSession session) {
-        String adminUsername = (String) session.getAttribute("user");
-        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        User admin = bankService.getUserByUsername(adminUsername);
-        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (getAuthenticatedAdmin(session) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
         return ResponseEntity.ok(bankService.getRiskEngine().getBlockedRecipients());
     }
 
     @PostMapping("/admin/risk/review")
     public ResponseEntity<?> reviewTransaction(@RequestBody Map<String, String> request, HttpSession session) {
-        String adminUsername = (String) session.getAttribute("user");
-        if (adminUsername == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        User admin = bankService.getUserByUsername(adminUsername);
-        if (admin == null || !admin.isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (getAuthenticatedAdmin(session) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
         String transactionId = request.get("transactionId");
         String action = request.get("action"); // APPROVE, REJECT

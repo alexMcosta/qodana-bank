@@ -7,7 +7,7 @@ on:
       - initial
       - baseline
       - quickfix
-      - Junirepair
+      - Juni-fix
 
 jobs:
   qodana:
