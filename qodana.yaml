@@ -13,6 +13,8 @@ version: "1.0"
 profile:
   name: qodana.recommended
 
+fixesStrategy: cleanup
+
 projectJDK: "11"
 
 linter: jetbrains/qodana-jvm:2026.1

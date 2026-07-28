@@ -30,7 +30,8 @@ jobs:
         uses: JetBrains/qodana-action@v2026.1
         with:
           pr-mode: false
-          args: --baseline baseline.sarif.json
+          args: --baseline baseline.sarif.json  --apply-fixes
+          push-fixes: pull-request
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1451718847 }}
           QODANA_ENDPOINT: 'https://qodana.cloud'
