@@ -1,4 +1,4 @@
-package com.qodana.bank.model;
+package main.java.com.qodana.bank.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 

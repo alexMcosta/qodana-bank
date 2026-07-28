@@ -1,10 +1,10 @@
-package com.qodana.bank.model;
+package main.java.com.qodana.bank.model;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Customer extends User {
-    private List<Account> accounts = new ArrayList<>();
+    private final List<Account> accounts = new ArrayList<>();
 
     public Customer(String username, String password) {
         super(username, password, false);
