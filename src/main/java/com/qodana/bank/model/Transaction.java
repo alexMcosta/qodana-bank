@@ -1,16 +1,16 @@
-package com.qodana.bank.model;
+package main.java.com.qodana.bank.model;
 
 import java.time.LocalDateTime;
 
 public class Transaction {
-    private String id;
-    private String username;
-    private String type; // TRANSFER, DEPOSIT, WITHDRAWAL, ADJUSTMENT
-    private String account; // CHECKING, SAVINGS
-    private double amount;
-    private double balanceAfter;
-    private LocalDateTime timestamp;
-    private TransactionStatus status;
+    private final String id;
+    private final String username;
+    private final String type; // TRANSFER, DEPOSIT, WITHDRAWAL, ADJUSTMENT
+    private final String account; // CHECKING, SAVINGS
+    private final double amount;
+    private final double balanceAfter;
+    private final LocalDateTime timestamp;
+    private final TransactionStatus status;
 
     public Transaction(String username, String type, String account, double amount, double balanceAfter, TransactionStatus status) {
         this.id = java.util.UUID.randomUUID().toString();

@@ -1,8 +1,8 @@
-package com.qodana.bank.model;
+package main.java.com.qodana.bank.model;
 
 public class RiskEvaluation {
-    private RiskLevel level;
-    private String reason;
+    private final RiskLevel level;
+    private final String reason;
 
     public RiskEvaluation(RiskLevel level, String reason) {
         this.level = level;

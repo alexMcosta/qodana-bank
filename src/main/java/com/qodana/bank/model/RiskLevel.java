@@ -1,4 +1,4 @@
-package com.qodana.bank.model;
+package main.java.com.qodana.bank.model;
 
 public enum RiskLevel {
     ALLOW,
