@@ -9,6 +9,6 @@ Qodana Bank,com.qodana.bank.model,Message,0,21,0,0,0,8,0,4,0,4
 Qodana Bank,com.qodana.bank.model,Admin,0,6,0,0,0,2,0,1,0,1
 Qodana Bank,com.qodana.bank.model,User,0,23,0,0,0,8,0,4,0,4
 Qodana Bank,com.qodana.bank,BankApplication,5,3,0,0,2,1,1,1,1,1
-Qodana Bank,com.qodana.bank.service,BankService,16,183,4,10,3,35,5,14,2,10
 Qodana Bank,com.qodana.bank.service,RiskEngine,0,183,1,13,0,38,1,17,0,11
+Qodana Bank,com.qodana.bank.service,BankService,16,183,4,10,3,35,5,14,2,10
 Qodana Bank,com.qodana.bank.controller,BankController,481,512,79,37,71,111,61,17,7,13

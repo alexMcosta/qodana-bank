@@ -224,7 +224,7 @@ window['_pr_isIE6'] = function () {
   var pr_amp = /&/g;
   var pr_lt = /</g;
   var pr_gt = />/g;
-  var pr_quot = /\"/g;
+  var pr_quot = /"/g;
   /** like textToHtml but escapes double quotes to be attribute safe. */
   function attribToHtml(str) {
     return str.replace(pr_amp, '&amp;')
@@ -659,7 +659,7 @@ window['_pr_isIE6'] = function () {
       + '|<\/?[a-zA-Z](?:[^>\"\']|\'[^\']*\'|\"[^\"]*\")*>'
       + '|<',  // A '<' that does not begin a larger chunk
       'g');
-  var pr_commentPrefix = /^<\!--/;
+  var pr_commentPrefix = /^<!--/;
   var pr_cdataPrefix = /^<!\[CDATA\[/;
   var pr_brPrefix = /^<br\b/i;
   var pr_tagNameRe = /^<(\/?)([a-zA-Z][a-zA-Z0-9]*)/;
@@ -738,10 +738,10 @@ window['_pr_isIE6'] = function () {
   function isNoCodeTag(tag) {
     return !!tag
         // First canonicalize the representation of attributes
-        .replace(/\s(\w+)\s*=\s*(?:\"([^\"]*)\"|'([^\']*)'|(\S+))/g,
+        .replace(/\s(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g,
                  ' $1="$2$3$4"')
         // Then look for the attribute we want.
-        .match(/[cC][lL][aA][sS][sS]=\"[^\"]*\bnocode\b/);
+        .match(/[cC][lL][aA][sS][sS]="[^"]*\bnocode\b/);
   }
 
   /**
@@ -955,24 +955,24 @@ window['_pr_isIE6'] = function () {
     if (options['tripleQuotedStrings']) {
       // '''multi-line-string''', 'single-line-string', and double-quoted
       shortcutStylePatterns.push(
-          [PR_STRING,  /^(?:\'\'\'(?:[^\'\\]|\\[\s\S]|\'{1,2}(?=[^\']))*(?:\'\'\'|$)|\"\"\"(?:[^\"\\]|\\[\s\S]|\"{1,2}(?=[^\"]))*(?:\"\"\"|$)|\'(?:[^\\\']|\\[\s\S])*(?:\'|$)|\"(?:[^\\\"]|\\[\s\S])*(?:\"|$))/,
+          [PR_STRING,  /^(?:'''(?:[^'\\]|\\[\s\S]|'{1,2}(?=[^']))*(?:'''|$)|"""(?:[^"\\]|\\[\s\S]|"{1,2}(?=[^"]))*(?:"""|$)|'(?:[^\\']|\\[\s\S])*(?:'|$)|"(?:[^\\"]|\\[\s\S])*(?:"|$))/,
            null, '\'"']);
     } else if (options['multiLineStrings']) {
       // 'multi-line-string', "multi-line-string"
       shortcutStylePatterns.push(
-          [PR_STRING,  /^(?:\'(?:[^\\\']|\\[\s\S])*(?:\'|$)|\"(?:[^\\\"]|\\[\s\S])*(?:\"|$)|\`(?:[^\\\`]|\\[\s\S])*(?:\`|$))/,
+          [PR_STRING,  /^(?:'(?:[^\\']|\\[\s\S])*(?:'|$)|"(?:[^\\"]|\\[\s\S])*(?:"|$)|`(?:[^\\`]|\\[\s\S])*(?:`|$))/,
            null, '\'"`']);
     } else {
       // 'single-line-string', "single-line-string"
       shortcutStylePatterns.push(
           [PR_STRING,
-           /^(?:\'(?:[^\\\'\r\n]|\\.)*(?:\'|$)|\"(?:[^\\\"\r\n]|\\.)*(?:\"|$))/,
+           /^(?:'(?:[^\\'\r\n]|\\.)*(?:'|$)|"(?:[^\\"\r\n]|\\.)*(?:"|$))/,
            null, '"\'']);
     }
     if (options['verbatimStrings']) {
       // verbatim-string-literal production from the C# grammar.  See issue 93.
       fallthroughStylePatterns.push(
-          [PR_STRING, /^@\"(?:[^\"]|\"\")*(?:\"|$)/, null]);
+          [PR_STRING, /^@"(?:[^"]|"")*(?:"|$)/, null]);
     }
     if (options['hashComments']) {
       if (options['cStyleComments']) {
@@ -1039,7 +1039,7 @@ window['_pr_isIE6'] = function () {
              // with an optional modifier like UL for unsigned long
              + '[a-z]*', 'i'),
          null, '0123456789'],
-        [PR_PUNCTUATION, /^.[^\s\w\.$@\'\"\`\/\#]*/, null]);
+        [PR_PUNCTUATION, /^.[^\s\w.$@'"`\/#]*/, null]);
 
     return createSimpleLexer(shortcutStylePatterns, fallthroughStylePatterns);
   }
@@ -1250,7 +1250,7 @@ window['_pr_isIE6'] = function () {
           [
            [PR_PLAIN,       /^[^<?]+/],
            [PR_DECLARATION, /^<!\w[^>]*(?:>|$)/],
-           [PR_COMMENT,     /^<\!--[\s\S]*?(?:-\->|$)/],
+           [PR_COMMENT,     /^<!--[\s\S]*?(?:-->|$)/],
            // Unescaped content in an unknown language
            ['lang-',        /^<\?([\s\S]+?)(?:\?>|$)/],
            ['lang-',        /^<%([\s\S]+?)(?:%>|$)/],
@@ -1266,20 +1266,20 @@ window['_pr_isIE6'] = function () {
   registerLangHandler(
       createSimpleLexer(
           [
-           [PR_PLAIN,        /^[\s]+/, null, ' \t\r\n'],
-           [PR_ATTRIB_VALUE, /^(?:\"[^\"]*\"?|\'[^\']*\'?)/, null, '\"\'']
+           [PR_PLAIN,        /^\s+/, null, ' \t\r\n'],
+           [PR_ATTRIB_VALUE, /^(?:"[^"]*"?|'[^']*'?)/, null, '\"\'']
            ],
           [
            [PR_TAG,          /^^<\/?[a-z](?:[\w.:-]*\w)?|\/?>$/i],
            [PR_ATTRIB_NAME,  /^(?!style[\s=]|on)[a-z](?:[\w:-]*\w)?/i],
-           ['lang-uq.val',   /^=\s*([^>\'\"\s]*(?:[^>\'\"\s\/]|\/(?=\s)))/],
+           ['lang-uq.val',   /^=\s*([^>'"\s]*(?:[^>'"\s\/]|\/(?=\s)))/],
            [PR_PUNCTUATION,  /^[=<>\/]+/],
-           ['lang-js',       /^on\w+\s*=\s*\"([^\"]+)\"/i],
-           ['lang-js',       /^on\w+\s*=\s*\'([^\']+)\'/i],
-           ['lang-js',       /^on\w+\s*=\s*([^\"\'>\s]+)/i],
-           ['lang-css',      /^style\s*=\s*\"([^\"]+)\"/i],
-           ['lang-css',      /^style\s*=\s*\'([^\']+)\'/i],
-           ['lang-css',      /^style\s*=\s*([^\"\'>\s]+)/i]
+           ['lang-js',       /^on\w+\s*=\s*"([^"]+)"/i],
+           ['lang-js',       /^on\w+\s*=\s*'([^']+)'/i],
+           ['lang-js',       /^on\w+\s*=\s*([^"'>\s]+)/i],
+           ['lang-css',      /^style\s*=\s*"([^"]+)"/i],
+           ['lang-css',      /^style\s*=\s*'([^']+)'/i],
+           ['lang-css',      /^style\s*=\s*([^"'>\s]+)/i]
            ]),
       ['in.tag']);
   registerLangHandler(
