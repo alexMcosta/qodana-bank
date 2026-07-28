@@ -12,9 +12,9 @@ import java.util.*;
     @Autowired
     private RiskEngine riskEngine;
 
-<span class="fc" id="L15">    private Map&lt;String, User&gt; users = new HashMap&lt;&gt;();</span>
-<span class="fc" id="L16">    private List&lt;Message&gt; messages = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L17">    private List&lt;Transaction&gt; transactions = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L15">    private final Map&lt;String, User&gt; users = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L16">    private final List&lt;Message&gt; messages = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L17">    private final List&lt;Transaction&gt; transactions = new ArrayList&lt;&gt;();</span>
 
     @PostConstruct
     public void seedData() {
