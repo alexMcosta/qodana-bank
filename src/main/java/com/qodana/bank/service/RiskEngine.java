@@ -1,10 +1,9 @@
-package com.qodana.bank.service;
+package main.java.com.qodana.bank.service;
 
 import com.qodana.bank.model.*;
 import org.springframework.stereotype.Service;
 import java.util.*;
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
 
 @Service
 public class RiskEngine {

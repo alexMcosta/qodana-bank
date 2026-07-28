@@ -1,10 +1,10 @@
-package com.qodana.bank.model;
+package main.java.com.qodana.bank.model;
 
 import java.util.UUID;
 
 public class Account {
-    private String accountNumber;
-    private String type; // CHECKING, SAVINGS, BUSINESS, etc.
+    private final String accountNumber;
+    private final String type; // CHECKING, SAVINGS, BUSINESS, etc.
     private String nickname;
     private double balance;
     private double balanceLimit;
