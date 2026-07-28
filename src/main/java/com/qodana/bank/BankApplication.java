@@ -1,4 +1,4 @@
-package main.java.com.qodana.bank;
+package com.qodana.bank;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

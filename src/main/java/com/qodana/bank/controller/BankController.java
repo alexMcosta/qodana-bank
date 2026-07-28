@@ -1,4 +1,4 @@
-package main.java.com.qodana.bank.controller;
+package com.qodana.bank.controller;
 
 import com.qodana.bank.model.*;
 import com.qodana.bank.service.BankService;

@@ -1,4 +1,4 @@
-package main.java.com.qodana.bank.model;
+package com.qodana.bank.model;
 
 public class Message {
     private final String sender;

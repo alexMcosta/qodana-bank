@@ -1,4 +1,4 @@
-package main.java.com.qodana.bank.service;
+package com.qodana.bank.service;
 
 import com.qodana.bank.model.*;
 import org.springframework.stereotype.Service;

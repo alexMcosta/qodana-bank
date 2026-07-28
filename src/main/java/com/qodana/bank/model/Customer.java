@@ -1,4 +1,4 @@
-package main.java.com.qodana.bank.model;
+package com.qodana.bank.model;
 
 import java.util.ArrayList;
 import java.util.List;
