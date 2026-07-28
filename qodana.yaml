@@ -15,6 +15,9 @@ profile:
 
 projectJDK: "11"
 
+fixesStrategy: apply
+
 linter: jetbrains/qodana-jvm:2026.1
 exclude:
   - name: QodanaJavaSanity
+
